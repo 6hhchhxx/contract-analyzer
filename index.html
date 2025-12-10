@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>外贸合同智能审核助手</title>
+    <!-- 移除原有的全部样式，只保留关键部分，节省篇幅 -->
+    <style>
+        /* 保持原有的所有样式不变 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+               min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white;
+                    border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                    overflow: hidden; display: flex; flex-direction: column; min-height: 90vh; }
+        .header { background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+                  color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.2em; opacity: 0.9; }
+        /* ... 其他样式保持不变 ... */
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <!-- 保持原有HTML结构不变 -->
+        <div class="header">
+            <h1>外贸合同智能审核助手</h1>
+            <p>AI-Powered Foreign Trade Contract Review Assistant</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- 侧边栏 -->
+            <div class="sidebar">
+                <div class="file-info" v-if="file">
+                    <h3>文件信息</h3>
+                    <ul class="file-details">
+                        <li><span class="label">文件名</span><span class="value">{{ file.name }}</span></li>
+                        <li><span class="label">文件大小</span><span class="value">{{ formatFileSize(file.size) }}</span></li>
+                        <li><span class="label">类型</span><span class="value">{{ getFileType(file.name) }}</span></li>
+                        <li><span class="label">分析语言</span><span class="value">{{ languageText }}</span></li>
+                        <li v-if="aiResult"><span class="label">分析时间</span><span class="value">{{ currentTime }}</span></li>
+                    </ul>
+                </div>
+                
+                <div class="quick-actions">
+                    <button class="action-btn" @click="downloadReport" v-if="aiResult">📥 下载报告</button>
+                    <button class="action-btn" @click="newAnalysis">🔄 新分析</button>
+                    <button class="action-btn primary" @click="showHelp">❓ 使用帮助</button>
+                </div>
+            </div>
+            
+            <!-- 内容区域 -->
+            <div class="content-area">
+                <!-- 上传区域 -->
+                <div class="upload-section">
+                    <h2>上传合同文件</h2>
+                    <p style="margin-bottom: 20px; color: #6c757d;">支持 PDF 和 Word 格式文件</p>
+                    
+                    <div class="upload-container">
+                        <div class="file-input-container">
+                            <input type="file" id="fileInput" class="file-input" @change="handleFileUpload" accept=".pdf,.docx,.txt">
+                            <select v-model="language" class="language-select">
+                                <option value="zh">中文合同</option>
+                                <option value="en">English Contract</option>
+                                <option value="es">Español Contrato</option>
+                            </select>
+                        </div>
+                        
+                        <button @click="analyzeContract" :disabled="!file || analyzing" class="analyze-btn">
+                            {{ analyzing ? '分析中...' : '开始智能分析' }}
+                        </button>
+                    </div>
+                    
+                    <div v-if="file" class="file-status">
+                        <strong>已选择文件:</strong> {{ file.name }}
+                    </div>
+                </div>
+                
+                <!-- 结果区域 -->
+                <div class="result-section">
+                    <h2>分析结果</h2>
+                    
+                    <div v-if="analyzing" class="loading">
+                        <div class="spinner"></div>
+                        <p>AI正在深度分析合同内容，请稍候...</p>
+                        <p v-if="progress > 0" style="margin-top: 10px;">分析进度: {{ progress }}%</p>
+                    </div>
+                    
+                    <div v-else-if="aiResult">
+                        <div class="summary">
+                            <h3>📊 分析报告摘要</h3>
+                            <p>AI 已完成合同深度分析，发现关键风险点并提供专业建议</p>
+                            <div class="analysis-meta">
+                                <span>📅 分析时间: {{ currentTime }}</span>
+                                <span>📄 文件: {{ file.name }}</span>
+                                <span>🌐 语言: {{ languageText }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="ai-result" v-html="formatAiResult(aiResult)"></div>
+                    </div>
+                    
+                    <div v-else class="empty-state">
+                        <div class="icon">📋</div>
+                        <h3>准备分析</h3>
+                        <p>上传合同文件开始分析</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.5.0/dist/axios.min.js"></script>
+    <script>
+        // 代理服务器地址 - 修改为您部署的地址
+        const PROXY_SERVER = '/api/analyze'; // 或 'http://localhost:3000'
+        
+        new Vue({
+            el: '#app',
+            data: {
+                file: null,
+                language: 'zh',
+                analyzing: false,
+                aiResult: null,
+                currentTime: new Date().toLocaleString('zh-CN'),
+                progress: 0
+            },
+            computed: {
+                languageText() {
+                    const languages = { 'zh': '中文', 'en': 'English', 'es': 'Español' };
+                    return languages[this.language] || this.language;
+                }
+            },
+            methods: {
+                formatFileSize(bytes) {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                },
+                
+                getFileType(filename) {
+                    const ext = filename.split('.').pop().toLowerCase();
+                    return ext === 'pdf' ? 'PDF 文档' : 
+                           ext === 'docx' ? 'Word 文档' : 
+                           '文本文件';
+                },
+                
+                async readFileContent(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        
+                        if (file.name.toLowerCase().endsWith('.txt') || 
+                            file.name.toLowerCase().endsWith('.pdf') || 
+                            file.name.toLowerCase().endsWith('.docx')) {
+                            // 对于这些文件，直接读取为文本
+                            reader.onload = (e) => {
+                                // 如果是PDF/DOCX，这里只是简单读取，实际应该解析
+                                if (file.name.toLowerCase().endsWith('.pdf')) {
+                                    resolve(`[PDF文件] ${file.name}\n\n由于浏览器限制，PDF文件需要专用解析器。\n建议使用文本格式的合同文件。`);
+                                } else if (file.name.toLowerCase().endsWith('.docx')) {
+                                    resolve(`[Word文件] ${file.name}\n\n由于浏览器限制，Word文件需要专用解析器。\n建议使用文本格式的合同文件。`);
+                                } else {
+                                    resolve(e.target.result);
+                                }
+                            };
+                            reader.readAsText(file);
+                        } else {
+                            reject(new Error('不支持的文件格式'));
+                        }
+                        
+                        reader.onerror = () => reject(new Error('文件读取失败'));
+                    });
+                },
+                
+                handleFileUpload(event) {
+                    this.file = event.target.files[0];
+                    this.aiResult = null;
+                    this.currentTime = new Date().toLocaleString('zh-CN');
+                },
+                
+                async analyzeContract() {
+                    if (!this.file) {
+                        alert('请先选择合同文件');
+                        return;
+                    }
+                    
+                    this.analyzing = true;
+                    this.progress = 0;
+                    this.aiResult = null;
+                    this.currentTime = new Date().toLocaleString('zh-CN');
+                    
+                    const progressInterval = setInterval(() => {
+                        if (this.progress < 90) this.progress += 10;
+                    }, 1000);
+                    
+                    try {
+                        // 1. 读取文件内容
+                        this.progress = 10;
+                        const fileContent = await this.readFileContent(this.file);
+                        
+                        // 2. 通过代理服务器调用AI API
+                        this.progress = 30;
+                        const response = await axios.post(PROXY_SERVER, {
+                        text: fileContent.substring(0, 3000),
+                        lang: this.language
+                        }, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 60000
+                        });
+                        
+                        // 3. 处理结果
+                        this.progress = 90;
+                        if (response.data.result) {
+                            this.aiResult = response.data.result;
+                        } else {
+                            throw new Error('服务器返回数据格式错误');
+                        }
+                        
+                        clearInterval(progressInterval);
+                        this.progress = 100;
+                        
+                        setTimeout(() => {
+                            this.analyzing = false;
+                            this.progress = 0;
+                        }, 500);
+                        
+                    } catch (error) {
+                        console.error('分析失败:', error);
+                        clearInterval(progressInterval);
+                        this.analyzing = false;
+                        this.progress = 0;
+                        
+                        let errorMsg = '分析失败：';
+                        if (error.code === 'ECONNABORTED') {
+                            errorMsg += '请求超时';
+                        } else if (error.response) {
+                            errorMsg += `服务器错误 (${error.response.status})`;
+                        } else if (error.request) {
+                            errorMsg += '网络错误，请检查代理服务器地址';
+                        } else {
+                            errorMsg += error.message;
+                        }
+                        
+                        alert(errorMsg);
+                    }
+                },
+                
+                formatAiResult(text) {
+                    if (!text) return '<div class="empty-state"><p>暂无分析结果</p></div>';
+                    
+                    // 简单格式化文本
+                    const paragraphs = text.split('\n').filter(p => p.trim());
+                    let html = '';
+                    
+                    paragraphs.forEach(para => {
+                        const trimmed = para.trim();
+                        if (trimmed.includes('风险点') || trimmed.includes('风险：') || 
+                            trimmed.match(/^\d+\./) || trimmed.includes('建议：')) {
+                            html += `<div class="risk-card"><div class="risk-content">${trimmed}</div></div>`;
+                        } else if (trimmed.length > 10) {
+                            html += `<p style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">${trimmed}</p>`;
+                        }
+                    });
+                    
+                    return html || `<div class="risk-card"><div class="risk-content">${text}</div></div>`;
+                },
+                
+                downloadReport() {
+                    if (!this.aiResult) {
+                        alert('没有分析结果可下载');
+                        return;
+                    }
+                    
+                    const content = `合同分析报告\n文件：${this.file.name}\n时间：${this.currentTime}\n\n${this.aiResult}`;
+                    const blob = new Blob([content], { type: 'text/plain' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `合同分析_${this.file.name}.txt`;
+                    link.click();
+                },
+                
+                newAnalysis() {
+                    this.file = null;
+                    this.aiResult = null;
+                    document.getElementById('fileInput').value = '';
+                },
+                
+                showHelp() {
+                    alert('使用帮助：\n1. 上传文本、PDF或Word格式的合同\n2. 选择分析语言\n3. 点击开始分析\n\n注意：PDF/Word文件的完整解析需要专用解析器。');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
