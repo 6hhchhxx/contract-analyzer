@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>外贸合同智能审核助手</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.5.0/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 90vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        /* 主内容区域布局 */
+        .main-content {
+            display: flex;
+            flex: 1;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            padding: 25px;
+            border-right: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .file-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+        
+        .file-info h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-info h3:before {
+            content: "📄";
+            margin-right: 10px;
+        }
+        
+        .file-details {
+            list-style: none;
+        }
+        
+        .file-details li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f1f1;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .file-details li:last-child {
+            border-bottom: none;
+        }
+        
+        .file-details .label {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        
+        .file-details .value {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .quick-actions {
+            margin-top: auto;
+        }
+        
+        .action-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            text-align: center;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            background: #f1f3f5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .action-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+        
+        /* 内容区域 */
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .upload-section {
+            background: white;
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .upload-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+        }
+        
+        .file-input-container {
+            flex: 1;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: white;
+        }
+        
+        .language-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: white;
+        }
+        
+        .analyze-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+            white-space: nowrap;
+        }
+        
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .analyze-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .file-status {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f5e8;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-status:before {
+            content: "✓";
+            margin-right: 10px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        
+        .result-section {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .summary {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #3498db;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 简洁美观的 AI 分析结果样式 */
+        .ai-result {
+            background: white;
+            padding: 0;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .risk-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #e74c3c;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        
+        .risk-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .risk-card.medium {
+            border-left-color: #f39c12;
+        }
+        
+        .risk-card.low {
+            border-left-color: #27ae60;
+        }
+        
+        .risk-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .risk-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        .risk-icon.high {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .risk-icon.medium {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .risk-icon.low {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .risk-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0;
+        }
+        
+        .risk-content {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .risk-point {
+            background: #fff5f5;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+            border-left: 3px solid #e74c3c;
+        }
+        
+        .legal-basis {
+            background: #f0f8ff;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+            border-left: 3px solid #3498db;
+        }
+        
+        .suggestion {
+            background: #f0fff4;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+            border-left: 3px solid #27ae60;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 25px 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+        
+        .analysis-meta {
+            display: flex;
+            justify-content: space-between;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        
+        .empty-state .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .server-status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e8;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+            font-size: 0.9em;
+        }
+        
+        .server-status.error {
+            background: #fff5f5;
+            border-left-color: #e74c3c;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #e9ecef;
+            }
+            
+            .upload-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .analyze-btn {
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .analysis-meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <div class="header">
+            <h1>{{ title }}</h1>
+            <p>{{ subtitle }}</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- 侧边栏 -->
+            <div class="sidebar">
+                <div class="file-info" v-if="file">
+                    <h3>文件信息</h3>
+                    <ul class="file-details">
+                        <li>
+                            <span class="label">文件名</span>
+                            <span class="value">{{ file.name }}</span>
+                        </li>
+                        <li>
+                            <span class="label">文件大小</span>
+                            <span class="value">{{ formatFileSize(file.size) }}</span>
+                        </li>
+                        <li>
+                            <span class="label">类型</span>
+                            <span class="value">{{ getFileType(file.name) }}</span>
+                        </li>
+                        <li>
+                            <span class="label">分析语言</span>
+                            <span class="value">{{ languageText }}</span>
+                        </li>
+                        <li v-if="aiResult">
+                            <span class="label">分析时间</span>
+                            <span class="value">{{ currentTime }}</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="server-status" :class="{ error: !serverConnected }">
+                    <strong>{{ serverConnected ? '✅' : '⚠️' }} 服务器状态：</strong> 
+                    {{ serverConnected ? '已连接云端AI服务' : '正在检查连接...' }}
+                </div>
+                
+                <div class="quick-actions">
+                    <button class="action-btn" @click="downloadReport" v-if="aiResult">
+                        📥 下载报告
+                    </button>
+                    <button class="action-btn" @click="newAnalysis">
+                        🔄 新分析
+                    </button>
+                    <button class="action-btn primary" @click="showHelp">
+                        ❓ 使用帮助
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 内容区域 -->
+            <div class="content-area">
+                <!-- 上传区域 -->
+                <div class="upload-section">
+                    <h2>上传合同文件</h2>
+                    <p style="margin-bottom: 20px; color: #6c757d;">支持直接输入文本或上传 .txt 文件（云端版本）</p>
+                    
+                    <div class="upload-container">
+                        <div class="file-input-container">
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <button @click="useTextInput" class="action-btn" :class="{ primary: inputMode === 'text' }" style="flex: 1;">
+                                    📝 文本输入
+                                </button>
+                                <button @click="useFileUpload" class="action-btn" :class="{ primary: inputMode === 'file' }" style="flex: 1;">
+                                    📁 文件上传
+                                </button>
+                            </div>
+                            
+                            <div v-if="inputMode === 'text'">
+                                <textarea 
+                                    v-model="contractText" 
+                                    class="file-input" 
+                                    style="height: 200px; font-family: monospace; resize: vertical;"
+                                    placeholder="请在此处粘贴或输入合同文本..."
+                                ></textarea>
+                                <div style="text-align: right; font-size: 0.9em; color: #6c757d;">
+                                    字数: {{ contractText.length }}
+                                </div>
+                            </div>
+                            
+                            <div v-else>
+                                <input type="file" id="fileInput" class="file-input" @change="handleFileUpload" accept=".txt">
+                                <div v-if="file" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                                    已选择: {{ file.name }} ({{ formatFileSize(file.size) }})
+                                </div>
+                            </div>
+                            
+                            <select v-model="language" class="language-select">
+                                <option value="zh">中文合同分析</option>
+                                <option value="en">English Contract Analysis</option>
+                                <option value="es">Español Análisis de Contrato</option>
+                            </select>
+                        </div>
+                        
+                        <button @click="analyzeContract" :disabled="analyzing || (!contractText && !file)" class="analyze-btn">
+                            {{ analyzing ? `分析中 ${progress}%` : '🚀 开始智能分析' }}
+                        </button>
+                    </div>
+                    
+                    <div v-if="analyzing" class="progress-bar">
+                        <div class="progress-fill" :style="{ width: progress + '%' }"></div>
+                    </div>
+                    
+                    <div v-if="file || contractText" class="file-status">
+                        <strong>✅ 准备就绪：</strong> 
+                        <span v-if="file">{{ file.name }} 已加载</span>
+                        <span v-if="contractText && !file">{{ contractText.length }} 字合同文本已输入</span>
+                        <span v-if="lastAnalysisTime" style="margin-left: 10px;">📅 上次分析: {{ lastAnalysisTime }}</span>
+                    </div>
+                </div>
+                
+                <!-- 结果区域 -->
+                <div class="result-section">
+                    <h2>AI分析结果</h2>
+                    
+                    <div v-if="analyzing" class="loading">
+                        <div class="spinner"></div>
+                        <p>🤖 AI正在深度分析合同内容...</p>
+                        <p style="margin-top: 10px; color: #3498db;">请稍候，这通常需要10-30秒</p>
+                        <div class="progress-bar" style="width: 80%; margin: 20px auto;">
+                            <div class="progress-fill" :style="{ width: progress + '%' }"></div>
+                        </div>
+                    </div>
+                    
+                    <div v-else-if="aiResult">
+                        <div class="summary">
+                            <h3>📊 分析报告摘要</h3>
+                            <p>AI 已完成合同深度分析，发现关键风险点并提供专业建议</p>
+                            <div class="analysis-meta">
+                                <span>📅 分析时间: {{ currentTime }}</span>
+                                <span v-if="file">📄 文件: {{ file.name }}</span>
+                                <span v-else>📝 输入方式: 文本输入</span>
+                                <span>🌐 语言: {{ languageText }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="ai-result" v-html="formatAiResult(aiResult)"></div>
+                        
+                        <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px;">
+                            <h3 style="margin-bottom: 15px;">💡 后续建议</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                                <div style="padding: 15px; background: #f0f8ff; border-radius: 8px;">
+                                    <h4 style="color: #3498db; margin-bottom: 10px;">📋 修改合同</h4>
+                                    <p>根据AI建议修改合同条款</p>
+                                </div>
+                                <div style="padding: 15px; background: #f0fff4; border-radius: 8px;">
+                                    <h4 style="color: #27ae60; margin-bottom: 10px;">⚖️ 法律咨询</h4>
+                                    <p>对高风险条款进行专业法律咨询</p>
+                                </div>
+                                <div style="padding: 15px; background: #fff5f5; border-radius: 8px;">
+                                    <h4 style="color: #e74c3c; margin-bottom: 10px;">🔍 重点核查</h4>
+                                    <p>重点关注高风险条款的实际执行</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div v-else class="empty-state">
+                        <div class="icon">📋</div>
+                        <h3>准备分析合同</h3>
+                        <p style="margin-bottom: 20px;">上传合同文件或直接输入文本开始AI智能分析</p>
+                        
+                        <div style="max-width: 600px; margin: 0 auto; text-align: left;">
+                            <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">✨ 系统特点：</h4>
+                                <ul style="color: #555; line-height: 1.8;">
+                                    <li>✅ <strong>智能AI分析</strong> - 使用通义千问大模型进行专业分析</li>
+                                    <li>✅ <strong>多语言支持</strong> - 支持中文、英文、西班牙语合同</li>
+                                    <li>✅ <strong>云端部署</strong> - 无需本地安装，打开网页即可使用</li>
+                                    <li>✅ <strong>专业风险识别</strong> - 识别法律风险并提供改进建议</li>
+                                    <li>✅ <strong>结构化报告</strong> - 生成清晰的格式化分析报告</li>
+                                </ul>
+                                
+                                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                                    <h4 style="color: #2c3e50; margin-bottom: 10px;">📝 使用建议：</h4>
+                                    <ol style="color: #666; line-height: 1.6;">
+                                        <li>对于复杂合同，建议使用<strong>文本输入模式</strong>直接粘贴</li>
+                                        <li>分析前确保合同内容<strong>完整</strong>且<strong>清晰</strong></li>
+                                        <li>分析结果仅供参考，重要合同请咨询专业律师</li>
+                                        <li>可下载分析报告用于后续讨论和修改</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API地址 - 自动使用当前域名
+        const API_BASE = window.location.origin;
+        
+        new Vue({
+            el: '#app',
+            data: {
+                // 页面标题
+                title: '外贸合同智能审核助手',
+                subtitle: 'AI-Powered Foreign Trade Contract Review Assistant',
+                
+                // 用户输入
+                file: null,
+                contractText: '',
+                inputMode: 'text', // 'text' 或 'file'
+                language: 'zh',
+                
+                // 分析状态
+                analyzing: false,
+                aiResult: null,
+                progress: 0,
+                currentTime: new Date().toLocaleString('zh-CN'),
+                lastAnalysisTime: null,
+                
+                // 系统状态
+                serverConnected: true
+            },
+            computed: {
+                languageText() {
+                    const languages = {
+                        'zh': '中文',
+                        'en': 'English', 
+                        'es': 'Español'
+                    };
+                    return languages[this.language] || this.language;
+                },
+                
+                canAnalyze() {
+                    return (this.file || this.contractText.trim().length > 50) && !this.analyzing;
+                }
+            },
+            mounted() {
+                // 检查服务器连接
+                this.checkServerConnection();
+                
+                // 尝试从本地存储加载上次的内容
+                const savedText = localStorage.getItem('lastContractText');
+                if (savedText) {
+                    this.contractText = savedText;
+                }
+                
+                const savedLanguage = localStorage.getItem('lastLanguage');
+                if (savedLanguage) {
+                    this.language = savedLanguage;
+                }
+            },
+            methods: {
+                // 格式化工具
+                formatFileSize(bytes) {
+                    if (!bytes) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                },
+                
+                getFileType(filename) {
+                    const ext = filename.split('.').pop().toLowerCase();
+                    return ext === 'txt' ? '文本文件' : '未知格式';
+                },
+                
+                // 输入模式切换
+                useTextInput() {
+                    this.inputMode = 'text';
+                    this.file = null;
+                    document.getElementById('fileInput').value = '';
+                },
+                
+                useFileUpload() {
+                    this.inputMode = 'file';
+                    this.contractText = '';
+                },
+                
+                // 文件处理
+                async handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    this.file = file;
+                    
+                    // 如果是文本文件，也加载到文本框中
+                    if (file.name.toLowerCase().endsWith('.txt')) {
+                        try {
+                            const text = await this.readFileAsText(file);
+                            this.contractText = text;
+                        } catch (error) {
+                            console.error('读取文件失败:', error);
+                        }
+                    }
+                    
+                    this.aiResult = null;
+                },
+                
+                readFileAsText(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = () => reject(new Error('文件读取失败'));
+                        reader.readAsText(file);
+                    });
+                },
+                
+                // 服务器连接检查
+                async checkServerConnection() {
+                    try {
+                        // 测试API是否可达
+                        const response = await fetch(`${API_BASE}/api/analyze`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text: 'test', lang: 'zh' })
+                        });
+                        
+                        const data = await response.json();
+                        this.serverConnected = true;
+                    } catch (error) {
+                        console.warn('服务器连接测试失败:', error);
+                        this.serverConnected = false;
+                    }
+                },
+                
+                // 主分析函数
+                async analyzeContract() {
+                    if (!this.canAnalyze) return;
+                    
+                    // 保存到本地存储
+                    localStorage.setItem('lastContractText', this.contractText);
+                    localStorage.setItem('lastLanguage', this.language);
+                    
+                    this.analyzing = true;
+                    this.progress = 0;
+                    this.aiResult = null;
+                    this.currentTime = new Date().toLocaleString('zh-CN');
+                    this.lastAnalysisTime = this.currentTime;
+                    
+                    // 进度条模拟
+                    const progressInterval = setInterval(() => {
+                        if (this.progress < 90) {
+                            this.progress += 5;
+                        }
+                    }, 500);
+                    
+                    try {
+                        // 获取合同文本
+                        let contractText = '';
+                        if (this.file && this.inputMode === 'file') {
+                            contractText = await this.readFileAsText(this.file);
+                        } else {
+                            contractText = this.contractText;
+                        }
+                        
+                        if (!contractText || contractText.trim().length < 50) {
+                            throw new Error('合同内容太短，请至少输入50个字符');
+                        }
+                        
+                        console.log('开始分析合同，长度:', contractText.length);
+                        
+                        // 调用API
+                        this.progress = 30;
+                        const response = await axios.post(`${API_BASE}/api/analyze`, {
+                            text: contractText,
+                            lang: this.language
+                        }, {
+                            timeout: 60000,
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        this.progress = 80;
+                        
+                        if (response.data.success) {
+                            this.aiResult = response.data.result;
+                            console.log('✅ AI分析成功！');
+                        } else {
+                            throw new Error(response.data.error || '分析失败');
+                        }
+                        
+                        clearInterval(progressInterval);
+                        this.progress = 100;
+                        
+                        setTimeout(() => {
+                            this.analyzing = false;
+                            this.progress = 0;
+                        }, 500);
+                        
+                    } catch (error) {
+                        console.error('分析失败:', error);
+                        clearInterval(progressInterval);
+                        this.analyzing = false;
+                        this.progress = 0;
+                        
+                        let errorMsg = '分析失败：';
+                        if (error.message.includes('timeout') || error.code === 'ECONNABORTED') {
+                            errorMsg += '请求超时，请稍后重试';
+                        } else if (error.message.includes('Network Error')) {
+                            errorMsg += '网络错误，请检查网络连接';
+                        } else if (error.message.includes('太短')) {
+                            errorMsg = error.message;
+                        } else {
+                            errorMsg += error.message;
+                        }
+                        
+                        alert(errorMsg);
+                    }
+                },
+                
+                // 格式化AI结果
+                formatAiResult(text) {
+                    if (!text) return '<div class="empty-state"><p>暂无分析结果</p></div>';
+                    
+                    // 分割为段落
+                    const lines = text.split('\n').filter(line => line.trim());
+                    
+                    let html = '';
+                    let inList = false;
+                    
+                    lines.forEach((line, index) => {
+                        const trimmed = line.trim();
+                        
+                        // 检测风险标题
+                        const riskMatch = trimmed.match(/【(高|中|低)风险】(.+)/) || 
+                                        trimmed.match(/\[(High|Medium|Low) Risk\](.+)/i) ||
+                                        trimmed.match(/\[(Alto|Medio|Bajo) Riesgo\](.+)/i);
+                        
+                        if (riskMatch) {
+                            if (inList) {
+                                html += '</div>';
+                                inList = false;
+                            }
+                            
+                            const level = riskMatch[1].toLowerCase();
+                            const levelMap = {
+                                '高': 'high', 'high': 'high', 'alto': 'high',
+                                '中': 'medium', 'medium': 'medium', 'medio': 'medium',
+                                '低': 'low', 'low': 'low', 'bajo': 'low'
+                            };
+                            const riskLevel = levelMap[level] || 'medium';
+                            const title = riskMatch[2].trim();
+                            const levelText = { high: '高风险', medium: '中风险', low: '低风险' }[riskLevel];
+                            const levelIcon = { high: '⚠️', medium: '🔶', low: '✅' }[riskLevel];
+                            
+                            html += `
+                                <div class="risk-card ${riskLevel}">
+                                    <div class="risk-header">
+                                        <div class="risk-icon ${riskLevel}">${levelIcon}</div>
+                                        <h3 class="risk-title">${title}</h3>
+                                    </div>
+                                    <div class="risk-content">
+                            `;
+                        }
+                        // 检测风险描述
+                        else if (trimmed.includes('风险描述：') || trimmed.includes('Risk Description:') || trimmed.includes('Descripción del riesgo:')) {
+                            const content = trimmed.replace(/风险描述：|Risk Description:|Descripción del riesgo:/, '').trim();
+                            html += `<div class="risk-point"><strong>风险描述：</strong> ${content}</div>`;
+                        }
+                        // 检测法律依据
+                        else if (trimmed.includes('法律依据：') || trimmed.includes('Legal Basis:') || trimmed.includes('Base legal:')) {
+                            const content = trimmed.replace(/法律依据：|Legal Basis:|Base legal:/, '').trim();
+                            html += `<div class="legal-basis"><strong>法律依据：</strong> ${content}</div>`;
+                        }
+                        // 检测改进建议
+                        else if (trimmed.includes('改进建议：') || trimmed.includes('Improvement Suggestions:') || trimmed.includes('Sugerencias de mejora:')) {
+                            const content = trimmed.replace(/改进建议：|Improvement Suggestions:|Sugerencias de mejora:/, '').trim();
+                            html += `<div class="suggestion"><strong>改进建议：</strong> ${content}</div>`;
+                        }
+                        // 检测数字列表
+                        else if (trimmed.match(/^\d+\./)) {
+                            if (!inList) {
+                                html += '<div style="margin: 15px 0; padding-left: 20px;">';
+                                inList = true;
+                            }
+                            html += `<p style="margin: 8px 0;">${trimmed}</p>`;
+                        }
+                        // 关闭风险卡片
+                        else if (trimmed.length < 5 && index > 0 && lines[index-1].includes('建议：')) {
+                            html += `</div></div>`;
+                        }
+                        // 普通段落
+                        else if (trimmed.length > 20) {
+                            if (inList) {
+                                html += '</div>';
+                                inList = false;
+                            }
+                            html += `<p style="margin: 15px 0; line-height: 1.6;">${trimmed}</p>`;
+                        }
+                    });
+                    
+                    // 关闭未结束的标签
+                    if (html.includes('<div class="risk-card')) {
+                        const openCards = (html.match(/<div class="risk-card/g) || []).length;
+                        const closeCards = (html.match(/<\/div><\/div>/g) || []).length;
+                        if (openCards > closeCards) {
+                            html += '</div></div>'.repeat(openCards - closeCards);
+                        }
+                    }
+                    
+                    return html || `<div class="risk-card"><div class="risk-content"><p>${text}</p></div></div>`;
+                },
+                
+                // 下载报告
+                downloadReport() {
+                    if (!this.aiResult) return;
+                    
+                    const content = `外贸合同智能审核报告
+================================
+
+${this.file ? `文件名称：${this.file.name}` : `输入方式：文本输入`}
+分析时间：${this.currentTime}
+分析语言：${this.languageText}
+
+${this.aiResult}
+
+--- 报告结束 ---
+系统提示：本报告由AI生成，仅供参考，重要合同请咨询专业律师。`;
+                    
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `合同分析报告_${new Date().getTime()}.txt`;
+                    link.click();
+                },
+                
+                // 新分析
+                newAnalysis() {
+                    this.aiResult = null;
+                    this.file = null;
+                    this.contractText = '';
+                    document.getElementById('fileInput').value = '';
+                },
+                
+                // 显示帮助
+                showHelp() {
+                    alert(`外贸合同智能审核助手 - 使用帮助
+
+📌 使用方法：
+1. 选择输入方式：
+   - 📝 文本输入：直接粘贴合同文本
+   - 📁 文件上传：上传 .txt 文件
+
+2. 选择分析语言：
+   - 中文：适用于中文合同
+   - English：英文合同
+   - Español：西班牙语合同
+
+3. 点击"开始智能分析"按钮
+
+4. 查看分析结果：
+   - 风险点按等级分类显示
+   - 包含法律依据和改进建议
+   - 可下载完整报告
+
+📝 注意事项：
+- 建议合同文本不少于200字
+- 复杂合同建议分部分分析
+- AI分析结果仅供参考
+- 重要合同请咨询专业律师
+
+🔄 其他功能：
+- 下载分析报告
+- 清空重新分析
+- 自动保存最近内容
+
+如有问题，请检查网络连接后重试。`);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
