@@ -1,10 +1,8 @@
 {
-  "name": "contract-analyzer",
+  "name": "contract-review-assistant",
   "version": "1.0.0",
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "axios": "^1.6.0"
+  "description": "Foreign Trade Contract Review Assistant",
+  "scripts": {
+    "build": "echo 'Build completed'"
   }
 }
